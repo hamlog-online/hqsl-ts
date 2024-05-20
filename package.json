@@ -1,6 +1,6 @@
 {
     "name": "hqsl-ts",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Library for dealing with HQSL data, creation and verification thereof.",
     "type": "module",
     "main": "dist/index.js",
