@@ -17,7 +17,7 @@ import {
     adifDate,
     adifTime,
 } from "./util/date";
-import { normalizeFreq, freqBand, bandFreq } from "./util/frequency";
+import { normalizeFreq, freqBand, bandFreqMode } from "./util/frequency";
 import { encoder, alphabetRe } from "./util/sigencoder";
 
 // Some format globals.
@@ -321,7 +321,7 @@ export class HQSL {
                         record.qso_date + (record.time_on || "0000")
                     ),
                     signal: record.rst_sent,
-                    freq: parseFloat(record.freq) || bandFreq(record.band) || 0,
+                    freq: parseFloat(record.freq) || bandFreqMode(record.band, record.mode) || 0,
                     mode: record.mode,
                     extra: record.comment,
                 })

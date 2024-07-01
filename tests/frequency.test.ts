@@ -1,4 +1,9 @@
-import { bandFreq, freqBand, normalizeFreq } from "../src/util/frequency";
+import {
+    bandFreq,
+    bandFreqMode,
+    freqBand,
+    normalizeFreq,
+} from "../src/util/frequency";
 
 test("Band mapper behaves as designed", () => {
     expect(freqBand(0.136)).toBe("2190m");
@@ -42,4 +47,14 @@ test("Frequency normalizer working as specified.", () => {
 test("Band to frequency works as designed.", () => {
     expect(bandFreq("20M")).toBe(14.175);
     expect(bandFreq("bogus")).toBe(null);
+});
+
+test("Band to frequency with mode assumptions works as designed.", () => {
+    expect(bandFreqMode("20M", "cw")).toBe(14.02);
+    expect(bandFreqMode("20M", "usb")).toBe(14.22);
+    expect(bandFreqMode("20M", "newfangled")).toBe(14.07);
+    // Mode-dependent table doesn't go this far up, so this should result
+    // in edge-calculated default, but not null.
+    expect(bandFreqMode("1mm", "cw")).toBe(245500);
+    expect(bandFreqMode("bogus", "cw")).toBe(null);
 });

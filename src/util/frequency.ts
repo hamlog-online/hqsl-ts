@@ -1,7 +1,14 @@
 import { bandmap } from "./bandmap";
+import { bandModeMap } from "./bandmodemap";
 
 interface BandList {
     [key: string]: number;
+}
+
+interface BandModeList {
+    [t: string]: {
+        [key: string]: number;
+    };
 }
 
 /**
@@ -31,6 +38,33 @@ export function freqBand(f: number): string {
  */
 export function bandFreq(s: string): number | null {
     return (bandmap as BandList)[s.toLowerCase()] || null;
+}
+
+/**
+ * Convert band name to frequency, mode dependent. Uses a table of defaults that
+ * depends on the mode, falls back to bare band if none of the defaults match.
+ *
+ * @param s Band name as per ADIF
+ * @param m Mode.
+ * @returns Frequency somewhere in the appropriate band segment.
+ */
+export function bandFreqMode(s: string, m: string): number | null {
+    // If the mode is an empty string, make no assumptions and just use the band default.
+    if (!m) {
+        return bandFreq(s);
+    }
+    // Determine which table of defaults to use.
+    // The default table is DIGI, because a lot more modes are DIGI than any other kind.
+    let table = "DIGI";
+    if (["USB", "LSB", "SSB", "FM", "AM", "VOICE"].includes(m.toUpperCase())) {
+        table = "PHONE";
+    }
+    if (["CW", "PCW"].includes(m.toUpperCase())) {
+        table = "CW";
+    }
+    // Then look up the table, and if it comes up empty, fall back to band edges calculation.
+    const tableValue = (bandModeMap as BandModeList)[table][s.toLowerCase()];
+    return tableValue || bandFreq(s);
 }
 
 /**
