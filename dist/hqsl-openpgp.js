@@ -1,9 +1,10 @@
-import { PublicKey, readKeys, readSignature, createMessage, verify, sign, decryptKey, } from "openpgp";
+import { PublicKey, readKeys, readSignature, createMessage, verify, sign, decryptKey, generateKey, reformatKey, } from "openpgp";
 import { isAfter, isBefore } from "date-fns";
+import { callsignRe } from "./hqsl";
 import { HQSLState } from "./hqsl-verification";
 import { Uint8ArrayToHex, fetchWithTimeout } from "./util/misc";
 import { fromHamDate } from "./util/date";
-const uidRe = /Amateur Radio Callsign: ([0-9A-Z]+)/g;
+const uidRe = /^Amateur Radio Callsign: ([0-9A-Z-]+)$/g;
 const notationName = "qsl@hqsl.net";
 function normalizeUrl(url) {
     let newUrl = new URL(url);
@@ -231,6 +232,7 @@ export class HQSLOpenPGP {
             format: "binary",
             signingKeys: signingKey,
             date: signingDate || new Date(),
+            config: pgpConfig,
         });
         return qsl;
     }
@@ -248,5 +250,51 @@ export class HQSLOpenPGP {
             });
         }
     }
+}
+export function callID(c) {
+    if (!c.match(callsignRe)) {
+        throw new Error("Malformed callsign");
+    }
+    return `Amateur Radio Callsign: ${c}`;
+}
+const pgpConfig = {
+    nonDeterministicSignaturesViaNotation: false,
+    v6Keys: false,
+};
+export async function generateSignerKey(userid, calls) {
+    const userIDs = [{ name: userid }].concat(calls.map((c) => {
+        return { name: callID(c) };
+    }));
+    const { privateKey, publicKey, revocationCertificate } = await generateKey({
+        type: "ecc",
+        curve: "curve25519Legacy",
+        userIDs: userIDs,
+        format: "object",
+        config: pgpConfig,
+    });
+    return {
+        privateKey: privateKey,
+        publicKey: publicKey,
+        revocationCertificate: revocationCertificate
+    };
+}
+export function listCalls(key) {
+    return key
+        .getUserIDs()
+        .filter((uid) => uid.match(uidRe))
+        .map((uid) => uid.replace(uidRe, "$1"))
+        .sort((a, b) => a.localeCompare(b));
+}
+export async function addUserID(key, callsign) {
+    const temporaryKeyPair = await reformatKey({
+        privateKey: key,
+        userIDs: [{ name: "dummy" }, { name: callID(callsign) }],
+        format: "object",
+        config: pgpConfig
+    });
+    const newUser = temporaryKeyPair.privateKey.users[1].clone();
+    newUser.mainKey = key.users[0].mainKey;
+    key.users.push(newUser);
+    return key;
 }
 //# sourceMappingURL=hqsl-openpgp.js.map

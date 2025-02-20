@@ -1,4 +1,5 @@
 import { bandmap } from "./bandmap";
+import { bandModeMap } from "./bandmodemap";
 export function freqBand(f) {
     let distance = Infinity;
     let knownBand = "??";
@@ -13,6 +14,20 @@ export function freqBand(f) {
 }
 export function bandFreq(s) {
     return bandmap[s.toLowerCase()] || null;
+}
+export function bandFreqMode(s, m) {
+    if (!m) {
+        return bandFreq(s);
+    }
+    let table = "DIGI";
+    if (["USB", "LSB", "SSB", "FM", "AM", "VOICE"].includes(m.toUpperCase())) {
+        table = "PHONE";
+    }
+    if (["CW", "PCW"].includes(m.toUpperCase())) {
+        table = "CW";
+    }
+    const tableValue = bandModeMap[table][s.toLowerCase()];
+    return tableValue || bandFreq(s);
 }
 export function normalizeFreq(n) {
     if (isNaN(n)) {

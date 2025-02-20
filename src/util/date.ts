@@ -1,5 +1,5 @@
 import { parse, format } from "date-fns";
-import { UTCDateMini } from "@date-fns/utc";
+import { UTCDate } from "@date-fns/utc";
 
 const hamTimeFormat = "yyyyMMddHHmm";
 const displayTimeFormat = "yyyy-MM-dd HH:mm";
@@ -10,8 +10,8 @@ const displayTimeFormat = "yyyy-MM-dd HH:mm";
  * @param s string
  * @returns Date in UTC
  */
-export function fromHamDate(s: string): UTCDateMini {
-    return parse(s + "Z", hamTimeFormat + "X", new UTCDateMini());
+export function fromHamDate(s: string): UTCDate {
+    return parse(s + "Z", hamTimeFormat + "X", new UTCDate());
 }
 
 /**

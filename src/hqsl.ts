@@ -6,7 +6,7 @@ to a string or ADIF, creating it from objects and sanity checking.
 */
 
 import { AdifFormatter, AdifParser } from "adif-parser-ts";
-import type { UTCDateMini } from "@date-fns/utc";
+import type { UTCDate } from "@date-fns/utc";
 
 import type { HQSLVerification } from "./hqsl-verification";
 
@@ -49,7 +49,7 @@ export class HQSL {
     /** Correspondent's call sign. */
     to?: string;
     /** QSO date in UTC. Requires the use of date-fns to properly work in UTC. */
-    when?: UTCDateMini;
+    when?: UTCDate;
     /** Signal report. */
     signal?: string;
     /** Frequency. */
@@ -77,7 +77,7 @@ export class HQSL {
         /** QSL recipient call sign. */
         to: string;
         /** QSO datetime in UTC. */
-        when: UTCDateMini;
+        when: UTCDate;
         /** Signal report. */
         signal?: string;
         /** Frequency in MHz. */
@@ -269,8 +269,8 @@ export class HQSL {
         const record: any = {
             CALL: this.from as string,
             OPERATOR: this.to as string,
-            QSO_DATE: adifDate(this.when as UTCDateMini),
-            TIME_ON: adifTime(this.when as UTCDateMini),
+            QSO_DATE: adifDate(this.when as UTCDate),
+            TIME_ON: adifTime(this.when as UTCDate),
             GRIDSQUARE: (this.where as string).slice(0, 8),
             RST_RCVD: this.signal,
             MODE: this.mode, // TODO: We need to massage it back to adif, don't we.

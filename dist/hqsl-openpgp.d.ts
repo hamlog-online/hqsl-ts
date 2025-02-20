@@ -1,11 +1,10 @@
-/// <reference path="../src/openpgp-missing.d.ts" />
-import type { UTCDateMini } from "@date-fns/utc";
+import type { UTCDate } from "@date-fns/utc";
 import { PublicKey, PrivateKey } from "openpgp";
 import { HQSL } from "./hqsl";
 export type CertificationRange = {
     call: string;
-    start: UTCDateMini;
-    end: UTCDateMini;
+    start: UTCDate;
+    end: UTCDate;
     key: PublicKey;
 };
 export declare class HQSLOpenPGP {
@@ -20,4 +19,12 @@ export declare class HQSLOpenPGP {
     sign(qsl: HQSL, key: PrivateKey, passphrase?: string, signingDate?: Date): Promise<HQSL>;
     publish(key: PublicKey, targetKeyServer?: string): Promise<void>;
 }
+export declare function callID(c: string): string;
+export declare function generateSignerKey(userid: string, calls: string[]): Promise<{
+    privateKey: PrivateKey;
+    publicKey: PublicKey;
+    revocationCertificate: string;
+}>;
+export declare function listCalls(key: PrivateKey | PublicKey): string[];
+export declare function addUserID(key: PrivateKey, callsign: string): Promise<PrivateKey>;
 //# sourceMappingURL=hqsl-openpgp.d.ts.map

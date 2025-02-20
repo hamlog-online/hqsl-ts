@@ -1,6 +1,6 @@
 {
     "name": "hqsl-ts",
-    "version": "1.0.3",
+    "version": "2.0.0",
     "description": "Library for dealing with HQSL data, creation and verification thereof.",
     "type": "module",
     "main": "dist/index.js",
@@ -12,11 +12,11 @@
     "repository": {
         "type": "git",
         "url": "git+https://github.com/hamlog-online/hqsl-ts.git"
-      },
-      "bugs": {
+    },
+    "bugs": {
         "url": "https://github.com/hamlog-online/hqsl-ts/issues",
         "email": "Eugene.Medvedev@wwpass.com"
-      },
+    },
     "scripts": {
         "generate": "node scripts/build_bandmap.js",
         "build": "npm run generate && npm run clean && npm run doc && npm run compile",
@@ -29,24 +29,23 @@
     "author": "Eugene Medvedev (AC1PZ) <Eugene.Medvedev@wwpass.com>",
     "license": "MIT",
     "dependencies": {
-        "@date-fns/utc": "^1.2.0",
-        "adif-parser-ts": "^0.5.13",
-        "base-x": "^4.0.0",
-        "date-fns": "^3.6.0",
-        "openpgp": "^5.11.1"
+        "@date-fns/utc": "^2.1.0",
+        "adif-parser-ts": "^0.6.21",
+        "base-x": "^5.0.0",
+        "date-fns": "^4.1.0",
+        "openpgp": "^6.1.0"
     },
     "devDependencies": {
         "@jest/globals": "^29.7.0",
-        "@openpgp/web-stream-tools": "0.0.11-patch-0",
         "@types/jest": "^29.5.12",
-        "@types/node": "^20.12.4",
+        "@types/node": "^22.13.4",
         "jest": "^29.7.0",
         "jest-fetch-mock": "^3.0.3",
-        "rimraf": "^5.0.5",
+        "rimraf": "^6.0.1",
         "ts-jest": "^29.1.2",
         "ts-node": "^10.9.2",
         "tslib": "^2.6.2",
-        "typedoc": "^0.26.3",
-        "typescript": "^5.5.2"
+        "typedoc": "^0.27.7",
+        "typescript": "^5.7.3"
     }
 }

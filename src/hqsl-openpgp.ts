@@ -9,7 +9,7 @@ Module consumers can, theoretically, import them separately.
 // openpgp.d.ts is missing few things and we declare them ourselves.
 /// <reference path='./openpgp-missing.d.ts' />
 
-import type { UTCDateMini } from "@date-fns/utc";
+import type { UTCDate } from "@date-fns/utc";
 import {
     PublicKey,
     PrivateKey,
@@ -20,15 +20,18 @@ import {
     verify,
     sign,
     decryptKey,
+    generateKey,
+    reformatKey,
 } from "openpgp";
 import { isAfter, isBefore } from "date-fns";
 
-import { HQSL } from "./hqsl";
+import { callsignRe, HQSL } from "./hqsl";
 import { HQSLState } from "./hqsl-verification";
 import { Uint8ArrayToHex, fetchWithTimeout } from "./util/misc";
 import { fromHamDate } from "./util/date";
 
-const uidRe = /Amateur Radio Callsign: ([0-9A-Z]+)/g;
+// Note the `-`: SWLs also send HQSL.
+const uidRe = /^Amateur Radio Callsign: ([0-9A-Z-]+)$/g;
 
 const notationName = "qsl@hqsl.net";
 
@@ -41,9 +44,9 @@ export type CertificationRange = {
     /** Callsign, with no prefixes or suffixes */
     call: string;
     /** Start time in UTC */
-    start: UTCDateMini;
+    start: UTCDate;
     /** End time in UTC */
-    end: UTCDateMini;
+    end: UTCDate;
     /** The public key object that certified this particular time range. */
     key: PublicKey;
 };
@@ -461,15 +464,13 @@ export class HQSLOpenPGP {
                   passphrase: passphrase || "",
               });
 
-        // NB: Beware the rake!
-        // See https://github.com/openpgpjs/openpgpjs/issues/1720#issuecomment-1923586318
-        // for details, without a specific version of web-stream-tools it currently won't compile.
         qsl.signature = await sign({
             message: unsignedMessage,
             detached: true,
             format: "binary",
             signingKeys: signingKey,
             date: signingDate || new Date(),
+            config: pgpConfig,
         });
 
         return qsl;
@@ -503,4 +504,128 @@ export class HQSLOpenPGP {
             });
         }
     }
+}
+
+/**
+ * Shorthand to format a callsign for user ID.
+ * @param c Callsign
+ * @returns
+ * @throws `Error` if the callsign does not conform to the regular expression used for matching them.
+ */
+export function callID(c: string): string {
+    if (!c.match(callsignRe)) {
+        throw new Error("Malformed callsign")
+    }
+    return `Amateur Radio Callsign: ${c}`;
+}
+
+// Config parameters for key and signature creation which get reused multiple times.
+const pgpConfig = {
+    // This is effectively ProtonMail specific, and when true
+    // bumps the size of a signature by a third.
+    nonDeterministicSignaturesViaNotation: false,
+    // We explicitly don't make v6 keys, they're far from widely supported yet.
+    v6Keys: false,
+}
+
+
+/**
+ * A shorthand function to generate a signer key in a way that is
+ * known to be compatible with all existing HQSL implementations and should
+ * be widely supported. Produces an OpenPGP v4/ed25519 key with no salted
+ * signatures.
+ * 
+ * Since one key owner may use many different call signs, and often, 
+ * a call sign may have multiple people using it over time or even 
+ * simultaneously, it is most reasonable to have the primary user ID
+ * identify the key owner in whichever way is most expedient 
+ * (Hamlog.Online uses plain integer IDs) while all the
+ * callsigns it claims are expressed in additional user IDs.
+ *
+ * @param userid The primary User ID string.
+ * @param calls An array of callsigns for this key to claim. 
+ *              Must contain pure callsigns with no slashes,
+ *              or be an empty array.
+ * @throws `Error` if any of the the call signs given were not valid.
+ */
+export async function generateSignerKey(userid: string, calls: string[]) : Promise<{
+    privateKey: PrivateKey,
+    publicKey: PublicKey,
+    revocationCertificate: string
+}>{
+    const userIDs = [{ name: userid }].concat(
+        calls.map((c) => {
+            return { name: callID(c) };
+        })
+    );
+
+    const { privateKey, publicKey, revocationCertificate } = await generateKey({
+        type: "ecc",
+        curve: "curve25519Legacy",
+        userIDs: userIDs,
+        format: "object",
+        config: pgpConfig,
+    });
+
+    return {
+        privateKey: privateKey,
+        publicKey: publicKey,
+        revocationCertificate: revocationCertificate
+    }
+}
+
+/**
+ * Go through a key to collect all the callsigns it claims, whether they are certified or not.
+ * For consistency, callsigns are returned in alphabetical order, rather than in the order they
+ * appear in the key.
+ * 
+ * @param key The key in question
+ * @returns An array of callsigns.
+ */
+export function listCalls(key: PrivateKey | PublicKey): string[] {
+    return key
+        .getUserIDs()
+        .filter((uid) => uid.match(uidRe))
+        .map((uid) => uid.replace(uidRe, "$1"))
+        .sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * When the list of callsigns a key claims must change, you need to add a self-signed user ID to it
+ * before that user ID can be certified, since no key server will accept a user ID that is not self-signed.
+ * With OpenPGPjs the process of adding an extra user ID to a key is far from straightforward,
+ * which is why this function is there.
+ * 
+ * To actually make this happen, we need to build a new key object using existing key material from 
+ * a given key, but with a completely new set of *two* userID objects on it. Bizarrely, this is the most
+ * expedient way to create a new self-signed userID with OpenPGPjs.
+ *
+ * Then we take the *second* user ID created this way (the first one is marked primary and
+ * would result in a key with two primary IDs) on the newly produced key object and graft it back
+ * into the structure of the original key. Once the key is serialized again, everything will be correct.
+ * 
+ * Beware, this modifies the key in place.
+ * 
+ * @param key a private key.
+ * @param callsign The callsign to claim.
+ * @returns 
+ */
+export async function addUserID(
+    key: PrivateKey,
+    callsign: string
+): Promise<PrivateKey> {
+    
+    const temporaryKeyPair = await reformatKey({
+        privateKey: key,
+        userIDs: [{ name: "dummy" }, { name: callID(callsign) }],
+        format: "object",
+        config: pgpConfig
+    });
+
+    // Copy out the *second* user from the rebuilt key and stick it into the old key.
+    const newUser = (temporaryKeyPair.privateKey.users[1] as any).clone();
+    newUser.mainKey = (key.users[0] as any).mainKey;
+    key.users.push(newUser);
+
+    return key;
 }

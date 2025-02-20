@@ -1,6 +1,6 @@
 import { AdifFormatter, AdifParser } from "adif-parser-ts";
 import { fromHamDate, toHamDate, displayHamDate, adifDate, adifTime, } from "./util/date";
-import { normalizeFreq, freqBand, bandFreq } from "./util/frequency";
+import { normalizeFreq, freqBand, bandFreqMode } from "./util/frequency";
 import { encoder, alphabetRe } from "./util/sigencoder";
 const fieldSeparator = ",";
 export const callsignRe = /^[A-Z0-9/-]+$/g;
@@ -152,7 +152,7 @@ export class HQSL {
                 to: record.call,
                 when: fromHamDate(record.qso_date + (record.time_on || "0000")),
                 signal: record.rst_sent,
-                freq: parseFloat(record.freq) || bandFreq(record.band) || 0,
+                freq: parseFloat(record.freq) || bandFreqMode(record.band, record.mode) || 0,
                 mode: record.mode,
                 extra: record.comment,
             }));

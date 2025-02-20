@@ -21,7 +21,7 @@ If you're using TypeScript, you might want to use the TypeScript source code dir
 ...
 ```
 
-Using this library without a bundler or from a CDN is not currently supported, due to the dependencies involved introducing a significant number of hoops that need jumping. *(Pull requests rectifying this situation are welcome.)* Since it is assumed you're using a bundler, no pre-minified versions are included. You can still load, e.g. `openpgpjs` from CDN, by adding it as an external dependency and using `https://cdn.jsdelivr.net/npm/openpgp@5.11.1/dist/openpgp.min.mjs` for the URL.
+Using this library without a bundler or from a CDN is not currently supported, due to the dependencies involved introducing a significant number of hoops that need jumping. *(Pull requests rectifying this situation are welcome.)* Since it is assumed you're using a bundler, no pre-minified versions are included. You can still load, e.g. `openpgpjs` from CDN, by adding it as an external dependency and using `https://cdn.jsdelivr.net/npm/openpgp@6.1.0/dist/openpgp.min.js` for the URL.
 
 ## Examples
 
@@ -139,6 +139,15 @@ const card = "https://hqsl.net/h#AC1PZ,FN42gv,W1KOT," +
 + `npm run build` to build for consumption. This will also build API documentation.
 + `npm run test` to run unit tests.
 + `npm run doc` to generate API documentation.
+
+## Upgrading to 2.0
+
+There are two sets of changes that might require your attention if you were using hqsl-ts:
+
+1. hqsl-ts switched to using to OpenPGPjs version 6. That required certain changes in the internals which will probably make hqsl-ts break when used with earlier versions, which is important if you were using OpenPGPjs from CDN.
+2. hqsl-ts switched to using `date-fns` version 4, which introduces significant changes in timezone support. This means that it now must use `UTCDate` rather than `UTCDateMini` everywhere.
+
+Otherwise, the only noteworthy change is the addition of functions to aid you in generating known-suitable signer keys and add User IDs to them.
 
 ## License
 

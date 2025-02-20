@@ -1,4 +1,4 @@
-import type { UTCDateMini } from "@date-fns/utc";
+import type { UTCDate } from "@date-fns/utc";
 import type { HQSLVerification } from "./hqsl-verification";
 export declare const callsignRe: RegExp;
 export declare const gridRe: RegExp;
@@ -7,7 +7,7 @@ export declare class HQSL {
     from?: string;
     where?: string;
     to?: string;
-    when?: UTCDateMini;
+    when?: UTCDate;
     signal?: string;
     freq?: number;
     mode?: string;
@@ -19,7 +19,7 @@ export declare class HQSL {
         from: string;
         where: string;
         to: string;
-        when: UTCDateMini;
+        when: UTCDate;
         signal?: string;
         freq: number;
         mode: string;

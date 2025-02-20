@@ -1,8 +1,16 @@
 import { PrivateKey, readPrivateKey, readKey } from "openpgp";
 
-import { HQSL, HQSLOpenPGP, HQSLState } from "../src/index";
+import {
+    HQSL,
+    HQSLOpenPGP,
+    HQSLState,
+    addUserID,
+    callID,
+    generateSignerKey,
+    listCalls,
+} from "../src/index";
 import { cardFromFile, slurpFileString, slurpFileBuffer } from "./testutils";
-import { UTCDateMini } from "@date-fns/utc";
+import { UTCDate } from "@date-fns/utc";
 
 // Using two merged keys to simulate the case of the keyserver returning multiple keys
 // from a lookup.
@@ -90,7 +98,7 @@ test("HQSL can be built from scratch, signed and verified.", async () => {
         where: "FN42",
         signal: "+00",
         mode: "FT8",
-        when: new UTCDateMini(qsoDate),
+        when: new UTCDate(qsoDate),
     });
 
     // Empty mode should trip the syntax check.
@@ -171,7 +179,7 @@ test("Signatures made by <call> on cards with calls with extra /-prefixes or suf
         where: "FN42",
         signal: "+00",
         mode: "FT8",
-        when: new UTCDateMini(qsoDate),
+        when: new UTCDate(qsoDate),
     });
 
     const signedCard = await client.sign(card, signingKey, "", signingDate);
@@ -192,4 +200,42 @@ test("Re-certified signer keys are considered uncertified.", async () => {
     const hqsl = HQSL.fromString(cardFromFile("normal.hqsl"));
     await client.verify(hqsl);
     expect(hqsl.verification?.verdict).toBe(HQSLState.KeyNotCertified);
+});
+
+test("Keys are generated in the expected format, new userIDs can be added.", async () => {
+    // We're not accepting callsigns which won't parse later.
+    expect(() => {
+        callID("ac1pz");
+    }).toThrow("Malformed callsign");
+
+    const { privateKey, publicKey, revocationCertificate } =
+        await generateSignerKey("Random Test User", ["AC1PZ", "AC-1234"]);
+
+    // listCalls reports calls in alphabetical order.
+    expect(listCalls(privateKey)).toStrictEqual(["AC-1234", "AC1PZ"]);
+
+    const privateKeyReclaimed = await addUserID(privateKey, "N0CALL");
+    expect(listCalls(privateKeyReclaimed)).toStrictEqual([
+        "AC-1234",
+        "AC1PZ",
+        "N0CALL",
+    ]);
+
+    // Double check: Is it a v4 key?
+    expect(privateKeyReclaimed.keyPacket.version).toBe(4);
+
+    // Double check: Does it have the expected curve?
+    const algo = privateKeyReclaimed.getAlgorithmInfo();
+    expect(algo).toStrictEqual({
+        algorithm: "eddsaLegacy",
+        curve: "ed25519Legacy",
+    });
+
+    // Do any of the userids expire? They shouldn't.
+    for (const user of privateKeyReclaimed.users) {
+        const expiration = await privateKeyReclaimed.getExpirationTime(
+            user.userID!
+        );
+        expect(expiration).toBe(Infinity);
+    }
 });
