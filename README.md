@@ -4,6 +4,8 @@ See [HQSL.net](https://hqsl.net/) for detailed information on what an HQSL is an
 
 This is a TypeScript library for parsing, signing, verifying and creating HQSL cards, as used in the HQSL.net card verifier and on [Hamlog.Online](https://hamlog.online/), meant for web use, WebView-based mobile apps, and Node.js.
 
+The library currently supports the 1.1.0 version of the HQSL standard.
+
 ## Usage
 
 ```bash

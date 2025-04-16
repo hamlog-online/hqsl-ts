@@ -32,10 +32,12 @@ export class HQSL {
             throw new SyntaxError("Malformed callsign");
         }
         const hWhere = fields[1];
-        if (!hWhere.match(gridRe) ||
-            hWhere.length < 4 ||
-            hWhere.length % 2 > 0) {
-            throw new SyntaxError("Malformed grid square");
+        if (hWhere !== "") {
+            if (!hWhere.match(gridRe) ||
+                hWhere.length < 4 ||
+                hWhere.length % 2 > 0) {
+                throw new SyntaxError("Malformed grid square");
+            }
         }
         const hWhen = fromHamDate(fields[3]);
         if (isNaN(hWhen.getTime())) {
@@ -51,9 +53,7 @@ export class HQSL {
         if (!!fields[9] && !fields[9].match(alphabetRe)) {
             throw new SyntaxError("Malformed signature");
         }
-        const hSig = fields[9] == pseudoSigStr
-            ? null
-            : encoder.decode(fields[9]);
+        const hSig = fields[9] == pseudoSigStr ? null : encoder.decode(fields[9]);
         return Object.assign(new HQSL(), {
             from: hFrom,
             where: hWhere,
@@ -78,14 +78,14 @@ export class HQSL {
     }
     get signedData() {
         var _a, _b, _c, _d;
-        for (const field of ["from", "to", "where", "when", "mode", "freq"]) {
+        for (const field of ["from", "to", "when", "mode", "freq"]) {
             if (!this[field]) {
                 throw new SyntaxError("Missing required field: " + field);
             }
         }
         if (!((_a = this.from) === null || _a === void 0 ? void 0 : _a.match(callsignRe)) ||
             !((_b = this.to) === null || _b === void 0 ? void 0 : _b.match(callsignRe)) ||
-            !((_c = this.where) === null || _c === void 0 ? void 0 : _c.match(gridRe)) ||
+            !(this.where === "" || ((_c = this.where) === null || _c === void 0 ? void 0 : _c.match(gridRe))) ||
             !((_d = this.mode) === null || _d === void 0 ? void 0 : _d.match(cardRe)) ||
             !this.when ||
             !this.freq ||
@@ -119,7 +119,6 @@ export class HQSL {
             OPERATOR: this.to,
             QSO_DATE: adifDate(this.when),
             TIME_ON: adifTime(this.when),
-            GRIDSQUARE: this.where.slice(0, 8),
             RST_RCVD: this.signal,
             MODE: this.mode,
             FREQ: this.freq,
@@ -127,8 +126,11 @@ export class HQSL {
             QSL_RCVD: "Y",
             APP_HQSL_DATA: this.toString(),
         };
-        if (this.where && this.where.length > 8) {
-            record["GRIDSQUARE_EXT"] = this.where.slice(8, 12);
+        if (this.where && this.where !== "") {
+            record["GRIDSQUARE"] = this.where.slice(0, 8);
+            if (this.where.length > 8) {
+                record["GRIDSQUARE_EXT"] = this.where.slice(8, 12);
+            }
         }
         if (this.extra) {
             record["COMMENT"] = this.extra.replace("_", " ");
@@ -147,12 +149,14 @@ export class HQSL {
         for (const record of adif.records || []) {
             result.push(Object.assign(new HQSL(), {
                 from: record.operator || record.station_callsign || call,
-                where: record.my_gridsquare +
+                where: (record.my_gridsquare || "") +
                     (record.my_gridsquare_ext || "") || grid,
                 to: record.call,
                 when: fromHamDate(record.qso_date + (record.time_on || "0000")),
                 signal: record.rst_sent,
-                freq: parseFloat(record.freq) || bandFreqMode(record.band, record.mode) || 0,
+                freq: parseFloat(record.freq) ||
+                    bandFreqMode(record.band, record.mode) ||
+                    0,
                 mode: record.mode,
                 extra: record.comment,
             }));
